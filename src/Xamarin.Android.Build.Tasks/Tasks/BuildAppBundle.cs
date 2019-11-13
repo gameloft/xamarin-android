@@ -1,6 +1,7 @@
 ﻿using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -43,7 +44,7 @@ namespace Xamarin.Android.Tasks
 					}
 				}
 
-				var json = JsonConvert.SerializeObject(new { });
+				var json = JObject.FromObject(new { });
 				if(!string.IsNullOrWhiteSpace(CustomBuildConfigFile) && File.Exists(CustomBuildConfigFile))
 				{
 					try
@@ -57,7 +58,7 @@ namespace Xamarin.Android.Tasks
 					catch (Exception e)
 					{ } // Do nothing for now
 				}
-				var jsonAddition = JsonConvert.SerializeObject (new {
+				var jsonAddition = JObject.FromObject(new {
 					compression = new {
 						uncompressedGlob = uncompressed,
 					}
@@ -69,7 +70,7 @@ namespace Xamarin.Android.Tasks
 				};
 				json.Merge(jsonAddition, mergeSettings);
 				Log.LogDebugMessage ("BundleConfig.json: {0}", json);
-				File.WriteAllText (temp, json);
+				File.WriteAllText (temp, json.ToString());
 
 				//NOTE: bundletool will not overwrite
 				if (File.Exists (Output))
