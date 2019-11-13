@@ -17,6 +17,8 @@ namespace Xamarin.Android.Tasks
 		[Required]
 		public string BaseZip { get; set; }
 
+		public string CustomBuildConfigFile { get; set; }
+
 		[Required]
 		public string Output { get; set; }
 
@@ -40,11 +42,32 @@ namespace Xamarin.Android.Tasks
 						uncompressed.Add ("**/*" + extension);
 					}
 				}
-				var json = JsonConvert.SerializeObject (new {
+
+				var json = JsonConvert.SerializeObject(new { });
+				if(!string.IsNullOrWhiteSpace(CustomBuildConfigFile) && File.Exists(CustomBuildConfigFile))
+				{
+					try
+					{
+						using (StreamReader file = File.OpenText(CustomBuildConfigFile))
+						using (JsonTextReader reader = new JsonTextReader(file))
+						{
+							json = (JObject)JToken.ReadFrom(reader);
+						}
+					}
+					catch (Exception e)
+					{ } // Do nothing for now
+				}
+				var jsonAddition = JsonConvert.SerializeObject (new {
 					compression = new {
 						uncompressedGlob = uncompressed,
 					}
 				});
+
+				var mergeSettings = new JsonMergeSettings() {
+					MergeArrayHandling = MergeArrayHandling.Replace,
+					MergeNullValueHandling = MergeNullValueHandling.Ignore
+				};
+				json.Merge(jsonAddition, mergeSettings);
 				Log.LogDebugMessage ("BundleConfig.json: {0}", json);
 				File.WriteAllText (temp, json);
 
