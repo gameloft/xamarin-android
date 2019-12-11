@@ -1037,7 +1037,11 @@ OSBridge::ensure_jnienv (void)
 	JNIEnv *env;
 	jvm->GetEnv ((void**)&env, JNI_VERSION_1_6);
 	if (env == nullptr) {
-		monoFunctions.thread_attach (monoFunctions.domain_get ());
+#ifdef PLATFORM_ANDROID
+		jvm->AttachCurrentThread (&env, nullptr);
+#else   // ndef PLATFORM_ANDROID
+		jvm->AttachCurrentThread (reinterpret_cast<void**>(&env), nullptr);
+#endif  // ndef PLATFORM_ANDROID
 		jvm->GetEnv ((void**)&env, JNI_VERSION_1_6);
 	}
 	return env;
