@@ -106,8 +106,10 @@ namespace Xamarin.Android.Build.Tests
 			return result;
 		}
 
-		protected static XDocument GetUI ()
+		protected static (int x, int y, int w, int h) GetControlBounds (string packageName, string uiElement, string text)
 		{
+			var regex = new Regex (@"[(0-9)]\d*", RegexOptions.Compiled);
+			var result = (x: 0, y: 0, w: 0, h: 0);
 			var ui = RunAdbCommand ("exec-out uiautomator dump /dev/tty");
 			while (ui.Contains ("ERROR:")) {
 				ui = RunAdbCommand ("exec-out uiautomator dump /dev/tty");
@@ -115,31 +117,25 @@ namespace Xamarin.Android.Build.Tests
 			}
 			ui = ui.Replace ("UI hierchary dumped to: /dev/tty", string.Empty).Trim ();
 			try {
-				return XDocument.Parse (ui);
-			} catch {
-				return XDocument.Parse ("<node />");
+				var uiDoc = XDocument.Parse (ui);
+				var node = uiDoc.XPathSelectElement ($"//node[contains(@resource-id,'{uiElement}')]");
+				if (node == null)
+					node = uiDoc.XPathSelectElement ($"//node[contains(@content-desc,'{uiElement}')]");
+				if (node == null)
+					node = uiDoc.XPathSelectElement ($"//node[contains(@text,'{text}')]");
+				if (node == null)
+					return result;
+				var bounds = node.Attribute ("bounds");
+				var matches = regex.Matches (bounds.Value);
+				int.TryParse (matches [0].Value, out int x);
+				int.TryParse (matches [1].Value, out int y);
+				int.TryParse (matches [2].Value, out int w);
+				int.TryParse (matches [3].Value, out int h);
+				return (x: x, y: y, w: w, h: h);
+			} catch (Exception ex) {
+				// Ignore any error and return and empty
+				throw new InvalidOperationException ($"uiautomator returned invalid xml {ui}", ex);
 			}
-		}
-
-		protected static (int x, int y, int w, int h) GetControlBounds (string packageName, string uiElement, string text)
-		{
-			var regex = new Regex (@"[(0-9)]\d*", RegexOptions.Compiled);
-			var result = (x: 0, y: 0, w: 0, h: 0);
-			var uiDoc = GetUI ();
-			var node = uiDoc.XPathSelectElement ($"//node[contains(@resource-id,'{uiElement}')]");
-			if (node == null)
-				node = uiDoc.XPathSelectElement ($"//node[contains(@content-desc,'{uiElement}')]");
-			if (node == null)
-				node = uiDoc.XPathSelectElement ($"//node[contains(@text,'{text}')]");
-			if (node == null)
-				return result;
-			var bounds = node.Attribute ("bounds");
-			var matches = regex.Matches (bounds.Value);
-			int.TryParse (matches [0].Value, out int x);
-			int.TryParse (matches [1].Value, out int y);
-			int.TryParse (matches [2].Value, out int w);
-			int.TryParse (matches [3].Value, out int h);
-			return (x: x, y: y, w: w, h: h);
 		}
 
 		protected static void ClickButton (string packageName, string buttonName, string buttonText)
